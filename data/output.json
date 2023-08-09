@@ -1,0 +1,29 @@
+{
+  "directory": "../data/exceled/html_cleaned_fin_06081_0.xls",
+  "file_name": "html_cleaned_fin_06081_0.xls",
+  "num_cols": 2,
+  "num_rows": 2,
+  "table_array": [
+    [
+      "Improvements",
+      "13020000"
+    ],
+    [
+      "Land",
+      "6196378"
+    ]
+  ],
+  "annotations": [
+    [
+      "attributes",
+      "data"
+    ],
+    [
+      "attributes",
+      "data"
+    ]
+  ],
+  "header_type": "vertical",
+  "table_id": null,
+  "url": null
+}

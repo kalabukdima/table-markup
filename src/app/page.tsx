@@ -1,8 +1,12 @@
 "use client"
 
+import React from "react";
+import { Property as CssProperties } from "csstype";
+
 import {
-  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, styled, tableCellClasses,
-  AppBar, Box, Toolbar, Typography, IconButton, Pagination, Container, Select, MenuItem, InputLabel, FormControl, ButtonGroup, Button, Checkbox, Radio, FormGroup, PaginationItem, useMediaQuery
+  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, AppBar, Box, Toolbar, Typography,
+  IconButton, Pagination, ButtonGroup, Button, Radio, FormGroup, PaginationItem, useMediaQuery, TextField, RadioGroup,
+  FormControlLabel
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2"
 import { createTheme } from "@mui/material";
@@ -12,16 +16,41 @@ import TableRowsIcon from "@mui/icons-material/TableRows";
 import AppsIcon from "@mui/icons-material/Apps";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 
+import { Point, fillRectangle } from "@/lib/matrix";
+import { FilledTableData, samples, CellType } from "@/lib/data";
+
+declare module '@mui/material/Button' {
+  interface ButtonPropsVariantOverrides {
+    pressed: true;
+  }
+}
 
 const theme = createTheme();
+
+function cellColor(type: CellType): CssProperties.Color {
+  if (type === undefined) {
+    return "default";
+  }
+  return {
+    "header": "lightsteelblue",
+    "attributes": "#f3e8ff",
+    "data": "#dcfce7",
+    "metadata": "lightgoldenrodyellow",
+  }[type];
+}
 
 function Spacer() {
   return <Box margin="auto" />;
 }
 
-function Header() {
+function Header({ count, page, setPage }: { count: number, page: number, setPage: (x: number) => void }) {
   const small = useMediaQuery(theme.breakpoints.down("sm"), { defaultMatches: true });
   const medium = useMediaQuery(theme.breakpoints.down("md"));
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
   return (
     <AppBar position="static">
       <Toolbar>
@@ -35,7 +64,8 @@ function Header() {
           <HomeIcon />
         </IconButton>
         <Pagination
-          count={100}
+          page={page} count={count}
+          onChange={handlePageChange}
           siblingCount={small ? 1 : medium ? 2 : 6} boundaryCount={1} shape="rounded"
           sx={{
             // For some reason the PaginationItem style below doesn't affect ellipsis
@@ -58,14 +88,55 @@ function Header() {
   )
 }
 
-function TableViewer() {
+function TableViewer(props: Pick<FilledTableData, "table_array" | "annotations"> & {
+  paintType: CellType,
+}) {
+  const [selection, setSelection] = React.useState<{
+    start: Point | undefined,
+    end: Point | undefined,
+  }>({
+    start: undefined,
+    end: undefined
+  })
+
+  const [annotations, setAnnotations] = React.useState(props.annotations);
+
+  const setSelectionStart = (x: number, y: number) => {
+    setSelection({
+      start: { x, y },
+      end: { x, y },
+    })
+  };
+  const setSelectionEnd = (x: number, y: number) => {
+    setSelection({
+      start: selection.start,
+      end: { x, y },
+    })
+  };
+  const clearSelection = () => {
+    setSelection({ start: undefined, end: undefined });
+  }
+  const confirmSelection = () => {
+    if (selection.start && selection.end) {
+      setAnnotations(fillRectangle(annotations, [selection.start, selection.end], props.paintType));
+    }
+    clearSelection();
+  };
+
+  const visibleAnnotations = (!selection.start || !selection.end) ? annotations : fillRectangle(
+    annotations, [selection.start, selection.end], props.paintType
+  );
+
   return (
-    <TableContainer component={Paper} sx={{ maxWidth: "fit-content" }}>
+    <TableContainer
+      component={Paper} sx={{ maxWidth: "fit-content" }}
+      onMouseUp={confirmSelection}
+    >
       <Table>
         <TableBody>
-          {[...Array(5).keys()].map((x) => (
+          {props.table_array.map((row, row_index) => (
             <TableRow
-              key={x}
+              key={row_index}
               sx={{
                 "& > td": {
                   borderRight: "1px solid",
@@ -75,9 +146,30 @@ function TableViewer() {
                 "&:last-child > td": { borderBottom: 0 }
               }}
             >
-              {[...Array(5).keys()].map((y) => (
-                <TableCell key={y}>
-                  {[...Array(y * 4 + 1)].map(_ => x.toString())}
+              {row.map((text, cell_index) => (
+                <TableCell
+                  key={cell_index}
+                  sx={{
+                    background: cellColor(visibleAnnotations[row_index][cell_index])
+                  }}
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    if (e.button === 0) { // primary button
+                      setSelectionStart(row_index, cell_index);
+                    } else {
+                      clearSelection();
+                    }
+                  }}
+                  onMouseEnter={e => {
+                    if (e.buttons & 1) { // primary button
+                      setSelectionEnd(row_index, cell_index)
+                    } else {
+                      // mouseup happened outside the table
+                      confirmSelection();
+                    }
+                  }}
+                >
+                  {text}
                 </TableCell>
               ))}
             </TableRow>
@@ -93,25 +185,31 @@ function TableColumnsIcon() {
 }
 
 export default function DataView() {
+  const [page, setPage] = React.useState(1);
+  const [paintType, setPaintType] = React.useState<CellType>("header");
   return (
     <ThemeProvider theme={theme}>
-      <Header />
+      <Header count={samples.length} page={page} setPage={setPage} />
       <Box padding={4}>
         <FormGroup>
           <Grid container spacing={2} alignItems={"stretch"} width={1}>
             <Grid width="100%">
-              <TableViewer />
+              <TableViewer
+                {...samples[0]}
+                paintType={paintType}
+              />
             </Grid>
             <Grid>
-              <Select
-                id="cell-type-select"
-                value="header"
+              <RadioGroup
+                name="controlled-radio-buttons-group"
+                value={paintType}
+                onChange={e => setPaintType(e.target.value as CellType)}
               >
-                <MenuItem value="header">Header</MenuItem>
-                <MenuItem value="attributes">Attributes</MenuItem>
-                <MenuItem value="data">Data</MenuItem>
-                <MenuItem value="metadata">Metadata</MenuItem>
-              </Select>
+                <FormControlLabel value="header" control={<Radio />} label="Header" />
+                <FormControlLabel value="attributes" control={<Radio />} label="Attributes" />
+                <FormControlLabel value="data" control={<Radio />} label="Data" />
+                <FormControlLabel value="metadata" control={<Radio />} label="Metadata" />
+              </RadioGroup>
             </Grid>
             <Grid>
               <ButtonGroup variant="contained">

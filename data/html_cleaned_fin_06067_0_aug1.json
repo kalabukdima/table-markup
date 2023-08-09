@@ -1,0 +1,83 @@
+{
+    "directory": "../data/exceled/html_cleaned_fin_06067_0_aug1.xls",
+    "file_name": "html_cleaned_fin_06067_0_aug1.xls",
+    "num_cols": 5,
+    "num_rows": 5,
+    "table_array": [
+        [
+            "Delinquent Date:",
+            "12/10/2017",
+            "04/10/2018",
+            "2019-12-10 00:00:00",
+            "2020-04-10 00:00:00"
+        ],
+        [
+            "Amount:",
+            "$11,149.63",
+            "$11,149.63",
+            "11100",
+            "11200"
+        ],
+        [
+            "Penalty:",
+            "$0.00",
+            "$0.00",
+            "$0.00",
+            "$0.00"
+        ],
+        [
+            "Installment Amount Due:",
+            "$0.00",
+            "$0.00",
+            "$0.00",
+            "$0.00"
+        ],
+        [
+            "Status:",
+            "Paid 12/10/2017",
+            "Paid 04/10/2018",
+            "Paid 12/10/2019",
+            "Paid 04/10/2020"
+        ]
+    ],
+    "annotations": [
+        [
+            "attributes",
+            "data",
+            "data",
+            "data",
+            "data"
+        ],
+        [
+            "attributes",
+            "data",
+            "data",
+            "data",
+            "data"
+        ],
+        [
+            "attributes",
+            "data",
+            "data",
+            "data",
+            "data"
+        ],
+        [
+            "attributes",
+            "data",
+            "data",
+            "data",
+            "data"
+        ],
+        [
+            "attributes",
+            "data",
+            "data",
+            "data",
+            "data"
+        ]
+    ],
+    "header_type": "vertical",
+    "table_id": null,
+    "url": null
+}
