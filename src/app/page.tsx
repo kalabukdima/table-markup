@@ -1,7 +1,8 @@
 "use client"
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Property as CssProperties } from "csstype";
+import { strict as assert } from "assert";
 
 import {
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, AppBar, Box, Toolbar, Typography,
@@ -17,14 +18,13 @@ import TableRowsIcon from "@mui/icons-material/TableRows";
 import AppsIcon from "@mui/icons-material/Apps";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 
+import Spacer from "@/components/Spacer";
+import TableColumnsIcon from "@/components/TableColumnsIcon";
 import { Point, fillRectangle } from "@/lib/matrix";
-import { FilledTableData, samples, CellType, TableType } from "@/lib/data";
+import { FilledTableData, CellType, TableType, isMarkedUp, getSample } from "@/lib/tables";
+import DatasetLoader from "@/lib/storage";
+import { getParamsFromUrl, saveParamsToUrl } from "@/lib/params";
 
-declare module '@mui/material/Button' {
-  interface ButtonPropsVariantOverrides {
-    pressed: true;
-  }
-}
 
 const theme = createTheme();
 
@@ -40,12 +40,12 @@ function cellColor(type: CellType): CssProperties.Color {
   }[type];
 }
 
-function Spacer() {
-  return <Box margin="auto" />;
-}
-
 type PageStatus = {
   done: boolean;
+}
+
+type Dataset = {
+  tables: FilledTableData[];
 }
 
 function Header(props: {
@@ -195,100 +195,149 @@ function TableViewer(props: {
   )
 }
 
-function TableColumnsIcon() {
-  return <TableRowsIcon sx={{ rotate: "90deg" }} />
-}
-
-type Dataset = {
-  tables: FilledTableData[];
-}
-
-function isMarkedUp(table: FilledTableData): boolean {
-  if (table.header_type != "other") {
-    return true;
-  }
-  if (!table.annotations) {
-    return false;
-  }
-  return table.annotations.find(row => (row.find(x => x) != undefined)) != undefined
-}
-
-export default function DataView() {
-  const [dataset, setDataset] = React.useState<Dataset>({ tables: samples });
-  const [page, setPage] = React.useState(1);
-  const tableIndex = page - 1;
-  const table = dataset.tables[tableIndex];
-  if (table.header_type == undefined) {
-    table.header_type = "other";
-  }
+function TablePage(props: {
+  table: FilledTableData,
+  setTableData: (newData: FilledTableData) => void,
+}) {
   const [paintType, setPaintType] = React.useState("header");
 
-  const setTableData = (newData: FilledTableData) => {
-    const newTables = dataset.tables.map((data, index) => index == tableIndex ? newData : data);
-    setDataset({
-      tables: newTables,
-    });
-  };
   const setAnnotations = (newValue: CellType[][]) => {
-    setTableData({
-      ...table,
+    props.setTableData({
+      ...props.table,
       annotations: newValue,
     });
   };
   const setHeaderType = (newValue: string) => {
-    setTableData({
-      ...table,
+    props.setTableData({
+      ...props.table,
       header_type: newValue as TableType,
     })
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Header pages={dataset.tables.map(table => ({ done: isMarkedUp(table) }))} currentPage={page} setPage={setPage} />
-      <Box padding={4}>
-        <FormGroup>
-          <Grid container spacing={2} alignItems={"stretch"} width={1}>
-            <Grid width="100%">
-              <TableViewer
-                key={tableIndex}
-                tableData={table}
-                setAnnotations={setAnnotations}
-                paintType={paintType}
-              />
-            </Grid>
-            <Grid>
-              <RadioGroup
-                value={paintType}
-                onChange={e => setPaintType(e.target.value)}
-              >
-                <FormControlLabel value="header" control={<Radio />} label="Header" />
-                <FormControlLabel value="attributes" control={<Radio />} label="Attributes" />
-                <FormControlLabel value="data" control={<Radio />} label="Data" />
-                <FormControlLabel value="metadata" control={<Radio />} label="Metadata" />
-                <FormControlLabel value="clear" control={<Radio />} label="Clear" />
-              </RadioGroup>
-            </Grid>
-            <Grid>
-              <RadioGroup
-                value={table.header_type}
-                onChange={e => setHeaderType(e.target.value)}
-              >
-                <FormControlLabel value="horizontal" control={<Radio/>} label={<TableRowsIcon />} />
-                <FormControlLabel value="vertical" control={<Radio/>} label={<TableColumnsIcon />} />
-                <FormControlLabel value="matrix" control={<Radio/>} label={<AppsIcon />} />
-                <FormControlLabel value="trash" control={<Radio/>} label={<QuestionMarkIcon />} />
-                <FormControlLabel value="other" control={<Radio/>} label="Unset" />
-              </RadioGroup>
-              {/* <ButtonGroup variant="contained">
+    <Box padding={4}>
+      <FormGroup>
+        <Grid container spacing={2} alignItems={"stretch"} width={1}>
+          <Grid width="100%">
+            <TableViewer
+              tableData={props.table}
+              setAnnotations={setAnnotations}
+              paintType={paintType}
+            />
+          </Grid>
+          <Grid>
+            <RadioGroup
+              value={paintType}
+              onChange={e => setPaintType(e.target.value)}
+            >
+              <FormControlLabel value="header" control={<Radio />} label="Header" />
+              <FormControlLabel value="attributes" control={<Radio />} label="Attributes" />
+              <FormControlLabel value="data" control={<Radio />} label="Data" />
+              <FormControlLabel value="metadata" control={<Radio />} label="Metadata" />
+              <FormControlLabel value="clear" control={<Radio />} label="Clear" />
+            </RadioGroup>
+          </Grid>
+          <Grid>
+            <RadioGroup
+              value={props.table.header_type}
+              onChange={e => setHeaderType(e.target.value)}
+            >
+              <FormControlLabel value="horizontal" control={<Radio />} label={<TableRowsIcon />} />
+              <FormControlLabel value="vertical" control={<Radio />} label={<TableColumnsIcon />} />
+              <FormControlLabel value="matrix" control={<Radio />} label={<AppsIcon />} />
+              <FormControlLabel value="trash" control={<Radio />} label={<QuestionMarkIcon />} />
+              <FormControlLabel value="other" control={<Radio />} label="Unset" />
+            </RadioGroup>
+            {/* <ButtonGroup variant="contained">
                 <IconButton size="large" color="primary"><TableRowsIcon /></IconButton>
                 <IconButton size="large"><TableColumnsIcon /></IconButton>
                 <IconButton size="large"><AppsIcon /></IconButton>
                 <IconButton size="large"><QuestionMarkIcon /></IconButton>
               </ButtonGroup> */}
-            </Grid>
           </Grid>
-        </FormGroup>
-      </Box>
+        </Grid>
+      </FormGroup>
+    </Box>
+  )
+}
+
+export function DatasetPage(props: {
+  dataset: Dataset,
+  saveTable: (index: number, data: FilledTableData) => void,
+  page: number,
+  setPage: (page: number) => void,
+}) {
+  const tableIndex = props.page - 1;
+  const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex]);
+  const pages = props.dataset.tables.map(table => ({ done: isMarkedUp(table) }));
+
+  const changePage = (newPage: number) => {
+    props.saveTable(tableIndex, currentTable);
+    props.setPage(newPage);
+  }
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Header pages={pages} currentPage={props.page} setPage={changePage} />
+      <TablePage
+        table={currentTable}
+        setTableData={setCurrentTable}
+      />
     </ThemeProvider>
+  )
+}
+
+export default function App() {
+  const params = getParamsFromUrl();
+
+  const [datasetHash, _setDatasetHash] = React.useState(params.datasetHash ?? "sample");
+  const [db, setDb] = React.useState<DatasetLoader>();
+  const [dataset, setDataset] = React.useState<Dataset>();
+  const [page, setPage] = React.useState(params.page ?? 1);
+
+  useEffect(() => {
+    (async () => {
+      const db = await DatasetLoader.forDataset(datasetHash);
+      let tables = await db.loadAll();
+      if (tables.length == 0) {
+        tables = getSample();
+        await db.save(tables);
+      }
+      const dataset = {
+        tables,
+      };
+      setDb(db);
+      setDataset(dataset);
+    })();
+  }, []);
+
+  useEffect(() => {
+    saveParamsToUrl({ page, datasetHash });
+  }, [datasetHash, page]);
+
+  const saveTable = (index: number, newData: FilledTableData) => {
+    assert(db != undefined);
+    assert(dataset != undefined);
+
+    db.saveOne(index, newData)
+      .catch(console.error);
+
+    const newTables = dataset.tables.map((data, i) => i == index ? newData : data);
+    setDataset({
+      tables: newTables,
+    });
+  };
+
+  return (
+    <>
+      {dataset &&
+        <DatasetPage
+          key={page}
+          dataset={dataset}
+          saveTable={saveTable}
+          page={page}
+          setPage={setPage}
+        />}
+    </>
   )
 }

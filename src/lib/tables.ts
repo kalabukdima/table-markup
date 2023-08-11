@@ -5,6 +5,8 @@ import sample3 from "../../data/html_cleaned_fin_06081_3_aug4.json";
 import sample4 from "../../data/html_cleaned_fin_06081_3_aug5.json";
 import sample5 from "../../data/html_cleaned_fin_06081_3_aug6.json";
 
+const samples = [sample0, sample1, sample2, sample3, sample4, sample5] as FilledTableData[];
+
 export type CellType = "header" | "attributes" | "data" | "metadata" | undefined;
 export type TableType = "vertical" | "horizontal" | "matrix" | "trash" | "other";
 
@@ -23,4 +25,22 @@ export interface FilledTableData extends TableData {
     header_type: TableType;
 }
 
-export const samples = [sample0, sample1, sample2, sample3, sample4, sample5] as FilledTableData[];
+export function isMarkedUp(table: FilledTableData): boolean {
+    if (table.header_type != "other") {
+        return true;
+    }
+    if (!table.annotations) {
+        return false;
+    }
+    return table.annotations.find(row => (row.find(x => x) != undefined)) != undefined
+}
+
+export function getSample() {
+    const result = [...samples];
+    result.forEach(table => {
+        if (table.header_type == undefined) {
+            table.header_type = "other";
+        }
+    });
+    return result;
+}
