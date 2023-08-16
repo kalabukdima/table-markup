@@ -1,3 +1,5 @@
+"use client"
+
 export type UrlParams = {
   page: number | undefined;
   datasetHash: string | undefined;

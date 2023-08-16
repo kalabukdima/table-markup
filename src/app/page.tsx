@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { Property as CssProperties } from "csstype";
 import { strict as assert } from "assert";
+import { fileSave } from "browser-fs-access";
 
 import {
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, AppBar, Box, Toolbar, Typography,
@@ -21,9 +22,10 @@ import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 import Spacer from "@/components/Spacer";
 import TableColumnsIcon from "@/components/TableColumnsIcon";
 import { Point, fillRectangle } from "@/lib/matrix";
-import { FilledTableData, CellType, TableType, isMarkedUp, getSample } from "@/lib/tables";
+import { FilledTableData, CellType, TableType, isMarkedUp } from "@/lib/tables";
 import DatasetLoader from "@/lib/storage";
 import { getParamsFromUrl, saveParamsToUrl } from "@/lib/params";
+import { Dataset, archive, sampleDataset } from "@/lib/dataset";
 
 
 const theme = createTheme();
@@ -44,14 +46,11 @@ type PageStatus = {
   done: boolean;
 }
 
-type Dataset = {
-  tables: FilledTableData[];
-}
-
 function Header(props: {
   pages: PageStatus[],
   currentPage: number,
   setPage: (x: number) => void,
+  download: () => void,
 }) {
   const theme = useTheme();
   const small = useMediaQuery(theme.breakpoints.down("sm"), { defaultMatches: true });
@@ -88,7 +87,7 @@ function Header(props: {
           )}
         />
         <Spacer />
-        <IconButton color="inherit"><FileDownloadIcon /></IconButton>
+        <IconButton color="inherit" onClick={props.download}><FileDownloadIcon /></IconButton>
       </Toolbar>
     </AppBar>
   )
@@ -266,6 +265,7 @@ export function DatasetPage(props: {
   saveTable: (index: number, data: FilledTableData) => void,
   page: number,
   setPage: (page: number) => void,
+  download: () => void,
 }) {
   const tableIndex = props.page - 1;
   const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex]);
@@ -278,7 +278,13 @@ export function DatasetPage(props: {
 
   return (
     <ThemeProvider theme={theme}>
-      <Header pages={pages} currentPage={props.page} setPage={changePage} />
+      <Header
+        pages={pages} currentPage={props.page} setPage={changePage}
+        download={() => {
+          props.saveTable(tableIndex, currentTable);
+          props.download();
+        }}
+      />
       <TablePage
         table={currentTable}
         setTableData={setCurrentTable}
@@ -297,15 +303,8 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const db = await DatasetLoader.forDataset(datasetHash);
-      let tables = await db.loadAll();
-      if (tables.length == 0) {
-        tables = getSample();
-        await db.save(tables);
-      }
-      const dataset = {
-        tables,
-      };
+      const db = await DatasetLoader.withId(datasetHash);
+      const dataset = await db.loadDatasetOrDefault(sampleDataset);
       setDb(db);
       setDataset(dataset);
     })();
@@ -319,12 +318,23 @@ export default function App() {
     assert(db != undefined);
     assert(dataset != undefined);
 
-    db.saveOne(index, newData)
+    db.saveTable(index, newData)
       .catch(console.error);
 
     const newTables = dataset.tables.map((data, i) => i == index ? newData : data);
     setDataset({
+      ...dataset,
       tables: newTables,
+    });
+  };
+
+  const download = () => {
+    assert(dataset != undefined);
+    const blob = archive(dataset);
+    fileSave(blob, {
+      fileName: `${datasetHash}.zip`,
+      extensions: [".zip"],
+      id: datasetHash,
     });
   };
 
@@ -337,6 +347,7 @@ export default function App() {
           saveTable={saveTable}
           page={page}
           setPage={setPage}
+          download={download}
         />}
     </>
   )
