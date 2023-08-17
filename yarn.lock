@@ -2140,6 +2140,9 @@ makeerror@1.0.12:
   dependencies:
     tmpl "1.0.5"
 
+material-ui-color@../material-ui-color:
+  version "1.2.0"
+
 merge-stream@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/merge-stream/-/merge-stream-2.0.0.tgz#52823629a14dd00c9770fb6ad47dc6310f2c1f60"

@@ -1,13 +1,13 @@
 "use client"
 
 import React, { useEffect } from "react";
-import { Property as CssProperties } from "csstype";
 import { strict as assert } from "assert";
 
 import {
   Paper, Table, TableBody, TableRow, TableCell, TableContainer, ThemeProvider, AppBar, Box, Toolbar, Typography, IconButton,
   Pagination, FormGroup, PaginationItem, useMediaQuery, useTheme, ToggleButtonGroup, ToggleButton,
 } from "@mui/material";
+import { ColorPicker } from "material-ui-color";
 import Grid from "@mui/material/Unstable_Grid2"
 import { createTheme } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -28,19 +28,13 @@ import { openDatasetFromDisk, saveDatasetToDisk } from "@/lib/filesystem";
 
 const theme = createTheme();
 
-function cellColor(type: CellType): CssProperties.Color {
-  if (!type) {
-    return "default";
-  }
-  return {
-    "header": "lightsteelblue",
-    "attributes": "#f3e8ff",
-    "data": "#dcfce7",
-    "metadata": "lightgoldenrodyellow",
-  }[type];
-}
-
 const cellTypes = ["header", "attributes", "data", "metadata"] as const;
+const cellColors = {
+  "header": "lightsteelblue",
+  "attributes": "#f3e8ff",
+  "data": "#dcfce7",
+  "metadata": "lightgoldenrodyellow",
+};
 
 type PageStatus = {
   done: boolean;
@@ -97,7 +91,8 @@ function Header(props: {
 function TableViewer(props: {
   tableData: FilledTableData,
   setAnnotations: (annotations: CellType[][]) => void,
-  paintType: string,
+  paintType: CellType,
+  colors: Record<string, string>,
 }) {
   const [selection, setSelection] = React.useState<{
     start: Point | undefined,
@@ -108,13 +103,6 @@ function TableViewer(props: {
   })
 
   const annotations = props.tableData.annotations;
-  const paintType = {
-    "header": "header",
-    "attributes": "attributes",
-    "data": "data",
-    "metadata": "metadata",
-    "clear": undefined,
-  }[props.paintType] as CellType;
 
   const setSelectionStart = (x: number, y: number) => {
     setSelection({
@@ -133,13 +121,13 @@ function TableViewer(props: {
   }
   const confirmSelection = () => {
     if (selection.start && selection.end) {
-      props.setAnnotations(fillRectangle(annotations, [selection.start, selection.end], paintType));
+      props.setAnnotations(fillRectangle(annotations, [selection.start, selection.end], props.paintType));
     }
     clearSelection();
   };
 
   const visibleAnnotations = (!selection.start || !selection.end) ? annotations : fillRectangle(
-    annotations, [selection.start, selection.end], paintType
+    annotations, [selection.start, selection.end], props.paintType
   );
 
   return (
@@ -165,7 +153,7 @@ function TableViewer(props: {
                 <TableCell
                   key={cell_index}
                   sx={{
-                    background: cellColor(visibleAnnotations[row_index][cell_index])
+                    background: props.colors[visibleAnnotations[row_index][cell_index] ?? ""] ?? "white"
                   }}
                   onMouseDown={e => {
                     e.preventDefault();
@@ -199,8 +187,10 @@ function TablePage(props: {
   table: FilledTableData,
   setTableData: (newData: FilledTableData) => void,
   setTableDataAndProceed: (newData: FilledTableData) => void,
+  colors: Record<string, string>,
+  setColors: (color: Record<string, string>) => void,
 }) {
-  const [paintType, setPaintType] = React.useState(cellTypes[0]);
+  const [paintType, setPaintType] = React.useState<CellType>(cellTypes[0]);
 
   const setAnnotations = (newValue: CellType[][]) => {
     props.setTableData({
@@ -225,6 +215,7 @@ function TablePage(props: {
               tableData={props.table}
               setAnnotations={setAnnotations}
               paintType={paintType}
+              colors={props.colors}
             />
           </Grid>
           <Grid>
@@ -242,7 +233,16 @@ function TablePage(props: {
                     justifyContent: "left",
                     textTransform: "inherit",
                   }} >
-                  <Typography component="span" fontFamily="monospace" variant="body1">{value}</Typography>
+                  <ColorPicker
+                    disableAlpha hideTextfield
+                    value={props.colors[value]}
+                    onChange={color => {
+                      props.setColors({ ...props.colors, [value]: color.css.backgroundColor ?? "white" });
+                    }}
+                  ></ColorPicker>
+                  <Typography component="span" fontFamily="monospace" variant="body1" sx={{marginLeft: 1}}>
+                    {value}
+                  </Typography>
                 </ToggleButton>
               )}
             </ToggleButtonGroup>
@@ -281,6 +281,8 @@ export function DatasetPage(props: {
   setPage: (page: number) => void,
   saveAndDownload: (index: number, data: FilledTableData) => void,
   upload: () => void,
+  colors: Record<string, string>,
+  setColors: (color: Record<string, string>) => void,
 }) {
   const tableIndex = props.page - 1;
   const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex].data);
@@ -313,6 +315,8 @@ export function DatasetPage(props: {
       />
       <TablePage
         table={currentTable}
+        colors={props.colors}
+        setColors={props.setColors}
         setTableData={setCurrentTable}
         setTableDataAndProceed={newData => {
           props.saveTable(tableIndex, newData);
@@ -331,6 +335,7 @@ export default function App() {
   const [dataset, setDataset] = React.useState<Dataset>();
   const [page, setPage] = React.useState(1);
   const [isNotFound, setNotFound] = React.useState(false);
+  const [colors, setColors] = React.useState<Record<string, string>>(cellColors);
 
   useEffect(() => {
     (async () => {
@@ -419,6 +424,8 @@ export default function App() {
           setPage={setPage}
           saveAndDownload={saveAndDownload}
           upload={upload}
+          colors={colors}
+          setColors={setColors}
         />
       }
       {isNotFound &&
