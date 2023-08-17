@@ -215,6 +215,7 @@ function TablePage(props: {
               orientation="vertical"
             >
               {cellTypes.map(value => <ToggleButton
+                key={value}
                 value={value}
                 sx={{
                   justifyContent: "left",

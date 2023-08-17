@@ -33,16 +33,20 @@ export default function App() {
     (async () => {
       const params = getParamsFromUrl();
       let db, hash, dataset;
-      if (params.datasetHash) {
-        hash = params.datasetHash;
-        db = await DatasetLoader.withId(hash);
-        dataset = await db.loadDataset();
-        console.log(`Loaded dataset ${hash}:`, dataset);
-      } else {
-        dataset = sampleDataset();
-        hash = await computeDatasetHash(dataset);
-        db = await DatasetLoader.withId(hash);
-        await db.saveDataset(dataset);
+      try {
+        if (params.datasetHash) {
+          hash = params.datasetHash;
+          db = await DatasetLoader.withId(hash);
+          dataset = await db.loadDataset();
+          console.log(`Loaded dataset ${hash}:`, dataset);
+        } else {
+          dataset = sampleDataset();
+          hash = await computeDatasetHash(dataset);
+          db = await DatasetLoader.withId(hash);
+          await db.saveDataset(dataset);
+        }
+      } catch (e) {
+        console.error(e);
       }
       if (dataset) {
         setDb(db);
@@ -121,11 +125,9 @@ export default function App() {
         />
       }
       {isNotFound &&
-        <h3>
-          <Typography align="center" variant="h4">
-            Dataset not found
-          </Typography>
-        </h3>
+        <Typography align="center" variant="h3" padding={2}>
+          Dataset not found
+        </Typography>
       }
     </>
   )
