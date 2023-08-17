@@ -8,6 +8,7 @@ interface DatasetDB extends DBSchema {
         value: {
             datasetId: string;
             tableIndex: number;
+            filename: string;
             table: FilledTableData;
         };
         indexes: {
@@ -64,7 +65,10 @@ export default class DatasetLoader {
             if (cursor.value.datasetId != this.datasetId) {
                 break;
             }
-            result.push(cursor.value.table);
+            result.push({
+                data: cursor.value.table,
+                filename: cursor.value.filename,
+            });
         }
         const metadata = await metadataPromise;
         await tx.done;
@@ -89,20 +93,33 @@ export default class DatasetLoader {
     }
 
     public async saveTable(tableIndex: number, newValue: FilledTableData): Promise<void> {
+        const tx = this.db.transaction("lastState", "readwrite");
+        const old = await tx.store.get([this.datasetId, tableIndex]);
+        if (!old) {
+            throw new Error(`Couldn't find a table to update, dataset: ${this.datasetId}, index: ${tableIndex}`);
+        }
         await this.db.put("lastState", {
             datasetId: this.datasetId,
             tableIndex,
             table: newValue,
+            filename: old.filename,
         });
     }
 
     public async saveDataset(dataset: Dataset): Promise<void> {
-        const tx = this.db.transaction("lastState", "readwrite");
-        await Promise.all(dataset.tables.map((table, index) => tx.store.put({
+        const tx = this.db.transaction(["lastState", "metadata"], "readwrite");
+        await Promise.all(dataset.tables.map((table, index) => tx.objectStore("lastState").put({
             datasetId: this.datasetId,
             tableIndex: index,
-            table,
+            table: table.data,
+            filename: table.filename,
         })));
+        await tx.objectStore("metadata").put({
+            datasetId: this.datasetId,
+            metadata: {
+                dirname: dataset.dirname,
+            }
+        })
         await tx.done;
     }
 }

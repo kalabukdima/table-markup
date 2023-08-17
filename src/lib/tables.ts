@@ -5,7 +5,32 @@ import sample3 from "../../data/html_cleaned_fin_06081_3_aug4.json";
 import sample4 from "../../data/html_cleaned_fin_06081_3_aug5.json";
 import sample5 from "../../data/html_cleaned_fin_06081_3_aug6.json";
 
-const samples = [sample0, sample1, sample2, sample3, sample4, sample5] as FilledTableData[];
+const samples = [
+    {
+        data: sample0,
+        filename: "html_cleaned_fin_06067_0_aug1.json",
+    },
+    {
+        data: sample1,
+        filename: "html_cleaned_fin_06081_0.json",
+    },
+    {
+        data: sample2,
+        filename: "html_cleaned_fin_06081_1.json",
+    },
+    {
+        data: sample3,
+        filename: "html_cleaned_fin_06081_3_aug4.json",
+    },
+    {
+        data: sample4,
+        filename: "html_cleaned_fin_06081_3_aug5.json",
+    },
+    {
+        data: sample5,
+        filename: "html_cleaned_fin_06081_3_aug6.json",
+    }
+] as { data: FilledTableData, filename: string }[];
 
 export type CellType = "header" | "attributes" | "data" | "metadata" | undefined;
 export type TableType = "vertical" | "horizontal" | "matrix" | "trash" | "other";
@@ -38,8 +63,8 @@ export function isMarkedUp(table: FilledTableData): boolean {
 export function getSample() {
     const result = [...samples];
     result.forEach(table => {
-        if (table.header_type == undefined) {
-            table.header_type = "other";
+        if (table.data.header_type == undefined) {
+            table.data.header_type = "other";
         }
     });
     return result;

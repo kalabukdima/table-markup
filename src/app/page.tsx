@@ -3,7 +3,6 @@
 import React, { useEffect } from "react";
 import { Property as CssProperties } from "csstype";
 import { strict as assert } from "assert";
-import { fileSave } from "browser-fs-access";
 
 import {
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, AppBar, Box, Toolbar, Typography,
@@ -13,11 +12,11 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2"
 import { createTheme } from "@mui/material";
-import HomeIcon from '@mui/icons-material/Home';
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import AppsIcon from "@mui/icons-material/Apps";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
+import AddIcon from '@mui/icons-material/Add';
 
 import Spacer from "@/components/Spacer";
 import TableColumnsIcon from "@/components/TableColumnsIcon";
@@ -25,7 +24,8 @@ import { Point, fillRectangle } from "@/lib/matrix";
 import { FilledTableData, CellType, TableType, isMarkedUp } from "@/lib/tables";
 import DatasetLoader from "@/lib/storage";
 import { getParamsFromUrl, saveParamsToUrl } from "@/lib/params";
-import { Dataset, archive, sampleDataset } from "@/lib/dataset";
+import { Dataset, computeDatasetHash, sampleDataset } from "@/lib/dataset";
+import { openDatasetFromDisk, saveDatasetToDisk } from "@/lib/filesystem";
 
 
 const theme = createTheme();
@@ -51,6 +51,7 @@ function Header(props: {
   currentPage: number,
   setPage: (x: number) => void,
   download: () => void,
+  upload: () => void,
 }) {
   const theme = useTheme();
   const small = useMediaQuery(theme.breakpoints.down("sm"), { defaultMatches: true });
@@ -63,10 +64,10 @@ function Header(props: {
           size="large"
           edge="start"
           color="inherit"
-          aria-label="menu"
           sx={{ mr: 2 }}
+          onClick={props.upload}
         >
-          <HomeIcon />
+          <AddIcon />
         </IconButton>
         <Pagination
           page={props.currentPage} count={props.pages.length}
@@ -266,10 +267,11 @@ export function DatasetPage(props: {
   page: number,
   setPage: (page: number) => void,
   download: () => void,
+  upload: () => void,
 }) {
   const tableIndex = props.page - 1;
-  const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex]);
-  const pages = props.dataset.tables.map(table => ({ done: isMarkedUp(table) }));
+  const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex].data);
+  const pages = props.dataset.tables.map(table => ({ done: isMarkedUp(table.data) }));
 
   const changePage = (newPage: number) => {
     props.saveTable(tableIndex, currentTable);
@@ -284,6 +286,7 @@ export function DatasetPage(props: {
           props.saveTable(tableIndex, currentTable);
           props.download();
         }}
+        upload={props.upload}
       />
       <TablePage
         table={currentTable}
@@ -294,24 +297,42 @@ export function DatasetPage(props: {
 }
 
 export default function App() {
-  const params = getParamsFromUrl();
-
-  const [datasetHash, _setDatasetHash] = React.useState(params.datasetHash ?? "sample");
+  const [datasetHash, setDatasetHash] = React.useState<string>();
   const [db, setDb] = React.useState<DatasetLoader>();
   const [dataset, setDataset] = React.useState<Dataset>();
-  const [page, setPage] = React.useState(params.page ?? 1);
+  const [page, setPage] = React.useState(1);
+  const [isNotFound, setNotFound] = React.useState(false);
 
   useEffect(() => {
     (async () => {
-      const db = await DatasetLoader.withId(datasetHash);
-      const dataset = await db.loadDatasetOrDefault(sampleDataset);
-      setDb(db);
-      setDataset(dataset);
+      const params = getParamsFromUrl();
+      let db, hash, dataset;
+      if (params.datasetHash) {
+        hash = params.datasetHash;
+        db = await DatasetLoader.withId(hash);
+        dataset = await db.loadDataset();
+        console.log(`Loaded dataset ${hash}:`, dataset);
+      } else {
+        dataset = sampleDataset();
+        hash = await computeDatasetHash(dataset);
+        db = await DatasetLoader.withId(hash);
+        await db.saveDataset(dataset);
+      }
+      if (dataset) {
+        setDb(db);
+        setDataset(dataset);
+        setDatasetHash(hash);
+        setPage(params.page ?? 1);
+      } else {
+        setNotFound(true);
+      }
     })();
   }, []);
 
   useEffect(() => {
-    saveParamsToUrl({ page, datasetHash });
+    if (datasetHash) {
+      saveParamsToUrl({ page, datasetHash });
+    }
   }, [datasetHash, page]);
 
   const saveTable = (index: number, newData: FilledTableData) => {
@@ -321,7 +342,9 @@ export default function App() {
     db.saveTable(index, newData)
       .catch(console.error);
 
-    const newTables = dataset.tables.map((data, i) => i == index ? newData : data);
+    const newTables = dataset.tables.map(
+      (table, i) => i == index ? { data: newData, filename: table.filename } : table
+    );
     setDataset({
       ...dataset,
       tables: newTables,
@@ -330,25 +353,48 @@ export default function App() {
 
   const download = () => {
     assert(dataset != undefined);
-    const blob = archive(dataset);
-    fileSave(blob, {
-      fileName: `${datasetHash}.zip`,
-      extensions: [".zip"],
-      id: datasetHash,
-    });
+    assert(datasetHash != undefined);
+    saveDatasetToDisk(dataset, datasetHash);
+  };
+
+  const upload = async () => {
+    const uploaded: Dataset = await openDatasetFromDisk();
+    const datasetHash = await computeDatasetHash(uploaded);
+    const db = await DatasetLoader.withId(datasetHash);
+    let dataset = await db.loadDataset();
+    if (!dataset) {
+      dataset = uploaded;
+      await db.saveDataset(uploaded);
+    } else {
+      console.log("Found saved dataset", datasetHash);
+    }
+
+    setDataset(dataset);
+    setDatasetHash(datasetHash);
+    setDb(db);
+    setPage(1);
   };
 
   return (
     <>
       {dataset &&
         <DatasetPage
-          key={page}
+          key={`${datasetHash}-${page}`}
           dataset={dataset}
           saveTable={saveTable}
           page={page}
           setPage={setPage}
           download={download}
-        />}
+          upload={upload}
+        />
+      }
+      {isNotFound &&
+        <h3>
+          <Typography align="center" variant="h4">
+            Dataset not found
+          </Typography>
+        </h3>
+      }
     </>
   )
 }
