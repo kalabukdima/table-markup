@@ -1,4 +1,5 @@
 import { strict as assert } from "assert";
+import sha1 from "sha1";
 
 function toHexString(array: Uint8Array): string {
     return [...array]
@@ -8,7 +9,7 @@ function toHexString(array: Uint8Array): string {
 
 export async function computeSetHash(buffers: Buffer[], length: number = 3): Promise<string> {
     const hashes = await Promise.all(buffers.map(
-        async x => new Uint8Array(await crypto.subtle.digest("SHA-1", x)).slice(undefined, length)
+        async x => sha1(x, {asBytes: true}).slice(undefined, length)
     ));
     const result = new Uint8Array(length);
     for (const hash of hashes) {
