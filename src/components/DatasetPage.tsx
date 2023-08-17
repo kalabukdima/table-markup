@@ -282,12 +282,10 @@ export function DatasetPage(props: {
 
   // Ugly but working
   document.onkeydown = e => {
-    if (!e.repeat) {
-      if (e.key == "ArrowRight") {
-        changePage(props.page % pages.length + 1);
-      } else if (e.key == "ArrowLeft") {
-        changePage((props.page + pages.length - 2) % pages.length + 1);
-      }
+    if (e.key == "ArrowRight") {
+      changePage(props.page % pages.length + 1);
+    } else if (e.key == "ArrowLeft") {
+      changePage((props.page + pages.length - 2) % pages.length + 1);
     }
   };
 
