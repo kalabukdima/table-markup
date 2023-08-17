@@ -198,6 +198,7 @@ function TableViewer(props: {
 function TablePage(props: {
   table: FilledTableData,
   setTableData: (newData: FilledTableData) => void,
+  setTableDataAndProceed: (newData: FilledTableData) => void,
 }) {
   const [paintType, setPaintType] = React.useState("header");
 
@@ -208,10 +209,10 @@ function TablePage(props: {
     });
   };
   const setHeaderType = (newValue: string) => {
-    props.setTableData({
+    props.setTableDataAndProceed({
       ...props.table,
       header_type: newValue as TableType,
-    })
+    });
   };
 
   return (
@@ -266,7 +267,7 @@ export function DatasetPage(props: {
   saveTable: (index: number, data: FilledTableData) => void,
   page: number,
   setPage: (page: number) => void,
-  download: () => void,
+  saveAndDownload: (index: number, data: FilledTableData) => void,
   upload: () => void,
 }) {
   const tableIndex = props.page - 1;
@@ -278,19 +279,35 @@ export function DatasetPage(props: {
     props.setPage(newPage);
   }
 
+  // Ugly but working
+  document.onkeydown = e => {
+    if (!e.repeat) {
+      if (e.key == "ArrowRight") {
+        changePage(props.page % pages.length + 1);
+      } else if (e.key == "ArrowLeft") {
+        changePage((props.page + pages.length - 2) % pages.length + 1);
+      }
+    }
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <Header
         pages={pages} currentPage={props.page} setPage={changePage}
         download={() => {
-          props.saveTable(tableIndex, currentTable);
-          props.download();
+          props.saveAndDownload(tableIndex, currentTable);
         }}
         upload={props.upload}
       />
       <TablePage
         table={currentTable}
         setTableData={setCurrentTable}
+        setTableDataAndProceed={newData => {
+          props.saveTable(tableIndex, newData);
+          props.setPage(props.page % pages.length + 1);
+          // In case there is only one table it should be redrawn correctly
+          setCurrentTable(newData);
+        }}
       />
     </ThemeProvider>
   )
@@ -335,25 +352,29 @@ export default function App() {
     }
   }, [datasetHash, page]);
 
-  const saveTable = (index: number, newData: FilledTableData) => {
+  const updateDataset = (tableIndex: number, newTable: FilledTableData): Dataset => {
     assert(db != undefined);
     assert(dataset != undefined);
 
-    db.saveTable(index, newData)
+    db.saveTable(tableIndex, newTable)
       .catch(console.error);
 
     const newTables = dataset.tables.map(
-      (table, i) => i == index ? { data: newData, filename: table.filename } : table
+      (table, i) => i == tableIndex ? { data: newTable, filename: table.filename } : table
     );
-    setDataset({
+    return {
       ...dataset,
       tables: newTables,
-    });
+    };
+  }
+  const saveTable = (index: number, newData: FilledTableData) => {
+    setDataset(updateDataset(index, newData));
   };
 
-  const download = () => {
-    assert(dataset != undefined);
+  const saveAndDownload = (index: number, data: FilledTableData) => {
     assert(datasetHash != undefined);
+    const dataset = updateDataset(index, data);
+    setDataset(dataset);
     saveDatasetToDisk(dataset, datasetHash);
   };
 
@@ -384,7 +405,7 @@ export default function App() {
           saveTable={saveTable}
           page={page}
           setPage={setPage}
-          download={download}
+          saveAndDownload={saveAndDownload}
           upload={upload}
         />
       }
