@@ -183,12 +183,16 @@ function TablePage(props: {
       annotations: newValue,
     });
   };
-  const setHeaderType = (rawValue: string) => {
-    const newValue = rawValue ?? "other";
-    props.setTableDataAndProceed({
+  const setHeaderType = (newValue: string | undefined) => {
+    const newTable = {
       ...props.table,
-      header_type: newValue as TableType,
-    });
+      header_type: (newValue ?? "other") as TableType,
+    };
+    if (newValue) {
+      props.setTableDataAndProceed(newTable);
+    } else {
+      props.setTableData(newTable);
+    }
   };
 
   return (
