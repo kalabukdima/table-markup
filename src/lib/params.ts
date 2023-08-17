@@ -25,5 +25,10 @@ export function saveParamsToUrl(params: UrlParams) {
     ...(params.datasetHash ? [`${datasetKey}=${params.datasetHash}`] : []),
     ...(params.page ? [`${pageKey}=${params.page}`] : []),
   ];
-  history.replaceState(null, "", `/?${parts.join("&")}`);
+  document.title = `Table Markup | ${params.datasetHash}`;
+  if (history.state && !history.state.__NA && history.state.datasetHash != params.datasetHash) {
+    history.pushState(params, "", `/?${parts.join("&")}`);
+  } else {
+    history.replaceState(params, "", `/?${parts.join("&")}`);
+  }
 }
