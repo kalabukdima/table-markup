@@ -5,10 +5,8 @@ import { Property as CssProperties } from "csstype";
 import { strict as assert } from "assert";
 
 import {
-  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ThemeProvider, AppBar, Box, Toolbar, Typography,
-  IconButton, Pagination, ButtonGroup, Button, Radio, FormGroup, PaginationItem, useMediaQuery, TextField, RadioGroup,
-  FormControlLabel,
-  useTheme
+  Paper, Table, TableBody, TableRow, TableCell, TableContainer, ThemeProvider, AppBar, Box, Toolbar, Typography, IconButton,
+  Pagination, FormGroup, PaginationItem, useMediaQuery, useTheme, ToggleButtonGroup, ToggleButton,
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2"
 import { createTheme } from "@mui/material";
@@ -41,6 +39,8 @@ function cellColor(type: CellType): CssProperties.Color {
     "metadata": "lightgoldenrodyellow",
   }[type];
 }
+
+const cellTypes = ["header", "attributes", "data", "metadata"] as const;
 
 type PageStatus = {
   done: boolean;
@@ -200,7 +200,7 @@ function TablePage(props: {
   setTableData: (newData: FilledTableData) => void,
   setTableDataAndProceed: (newData: FilledTableData) => void,
 }) {
-  const [paintType, setPaintType] = React.useState("header");
+  const [paintType, setPaintType] = React.useState(cellTypes[0]);
 
   const setAnnotations = (newValue: CellType[][]) => {
     props.setTableData({
@@ -208,7 +208,8 @@ function TablePage(props: {
       annotations: newValue,
     });
   };
-  const setHeaderType = (newValue: string) => {
+  const setHeaderType = (rawValue: string) => {
+    const newValue = rawValue ?? "other";
     props.setTableDataAndProceed({
       ...props.table,
       header_type: newValue as TableType,
@@ -227,34 +228,45 @@ function TablePage(props: {
             />
           </Grid>
           <Grid>
-            <RadioGroup
+            <ToggleButtonGroup
               value={paintType}
-              onChange={e => setPaintType(e.target.value)}
+              onChange={(_e, value) => setPaintType(value)}
+              exclusive
+              color="primary"
+              orientation="vertical"
             >
-              <FormControlLabel value="header" control={<Radio />} label="Header" />
-              <FormControlLabel value="attributes" control={<Radio />} label="Attributes" />
-              <FormControlLabel value="data" control={<Radio />} label="Data" />
-              <FormControlLabel value="metadata" control={<Radio />} label="Metadata" />
-              <FormControlLabel value="clear" control={<Radio />} label="Clear" />
-            </RadioGroup>
+              {cellTypes.map(value =>
+                <ToggleButton
+                  value={value}
+                  sx={{
+                    justifyContent: "left",
+                    textTransform: "inherit",
+                  }} >
+                  <Typography component="span" fontFamily="monospace" variant="body1">{value}</Typography>
+                </ToggleButton>
+              )}
+            </ToggleButtonGroup>
           </Grid>
           <Grid>
-            <RadioGroup
+            <ToggleButtonGroup
               value={props.table.header_type}
-              onChange={e => setHeaderType(e.target.value)}
+              onChange={(_e, value) => setHeaderType(value)}
+              exclusive
+              color="primary"
             >
-              <FormControlLabel value="horizontal" control={<Radio />} label={<TableRowsIcon />} />
-              <FormControlLabel value="vertical" control={<Radio />} label={<TableColumnsIcon />} />
-              <FormControlLabel value="matrix" control={<Radio />} label={<AppsIcon />} />
-              <FormControlLabel value="trash" control={<Radio />} label={<QuestionMarkIcon />} />
-              <FormControlLabel value="other" control={<Radio />} label="Unset" />
-            </RadioGroup>
-            {/* <ButtonGroup variant="contained">
-                <IconButton size="large" color="primary"><TableRowsIcon /></IconButton>
-                <IconButton size="large"><TableColumnsIcon /></IconButton>
-                <IconButton size="large"><AppsIcon /></IconButton>
-                <IconButton size="large"><QuestionMarkIcon /></IconButton>
-              </ButtonGroup> */}
+              <ToggleButton value="horizontal" >
+                <TableRowsIcon />
+              </ToggleButton>
+              <ToggleButton value="vertical" >
+                <TableColumnsIcon />
+              </ToggleButton>
+              <ToggleButton value="matrix" >
+                <AppsIcon />
+              </ToggleButton>
+              <ToggleButton value="trash">
+                <QuestionMarkIcon />
+              </ToggleButton>
+            </ToggleButtonGroup>
           </Grid>
         </Grid>
       </FormGroup>
