@@ -76,6 +76,7 @@ function Header(props: {
 function TableViewer(props: {
   tableData: FilledTableData;
   setAnnotations: (annotations: CellType[][]) => void;
+  setCellContent: (i: number, j: number, text: string) => void;
   paintType: CellType;
   colors: Record<string, string>;
 }) {
@@ -122,9 +123,9 @@ function TableViewer(props: {
     >
       <Table>
         <TableBody>
-          {props.tableData.table_array.map((row, row_index) => (
+          {props.tableData.table_array.map((row, rowIndex) => (
             <TableRow
-              key={row_index}
+              key={rowIndex}
               sx={{
                 "& > td": {
                   borderRight: "1px solid",
@@ -134,27 +135,45 @@ function TableViewer(props: {
                 "&:last-child > td": { borderBottom: 0 }
               }}
             >
-              {row.map((text, cell_index) => (
+              {row.map((text, cellIndex) => (
                 <TableCell
-                  key={cell_index}
+                  key={cellIndex}
                   sx={{
-                    background: props.colors[visibleAnnotations[row_index][cell_index] ?? ""] ?? "white"
+                    background: props.colors[visibleAnnotations[rowIndex][cellIndex] ?? ""] ?? "white"
                   }}
                   onMouseDown={e => {
-                    e.preventDefault();
                     if (e.button === 0) { // primary button
-                      setSelectionStart(row_index, cell_index);
+                      if (e.altKey) {
+                        e.currentTarget.setAttribute("contenteditable", "true");
+                      } else {
+                        e.preventDefault();
+                        if (document.activeElement && typeof (document.activeElement as any)["blur"] == "function") {
+                          (document.activeElement as HTMLElement).blur();
+                        }
+                        setSelectionStart(rowIndex, cellIndex);
+                      }
                     } else {
                       clearSelection();
                     }
                   }}
                   onMouseEnter={e => {
                     if (e.buttons & 1) { // primary button
-                      setSelectionEnd(row_index, cell_index);
+                      setSelectionEnd(rowIndex, cellIndex);
                     } else {
                       // mouseup happened outside the table
                       confirmSelection();
                     }
+                  }}
+                  onKeyDown={e => {
+                    e.stopPropagation();
+                    if (e.key == "Enter" || e.key == "Escape") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  suppressContentEditableWarning
+                  onBlur={e => {
+                    e.currentTarget.setAttribute("contenteditable", "false");
+                    props.setCellContent(rowIndex, cellIndex, e.currentTarget.innerText);
                   }}
                 >
                   {text}
@@ -194,6 +213,16 @@ function TablePage(props: {
       props.setTableData(newTable);
     }
   };
+  const setCellContent = (i: number, j: number, newValue: string) => {
+    props.setTableData({
+      ...props.table,
+      table_array: props.table.table_array.map((row, rowIndex) =>
+        row.map((cell, cellIndex) =>
+          (rowIndex == i && cellIndex == j) ? newValue : cell
+        )
+      )
+    });
+  };
 
   return (
     <Box padding={4}>
@@ -203,6 +232,7 @@ function TablePage(props: {
             <TableViewer
               tableData={props.table}
               setAnnotations={setAnnotations}
+              setCellContent={setCellContent}
               paintType={paintType}
               colors={props.colors} />
           </Grid>
@@ -282,7 +312,7 @@ export function DatasetPage(props: {
   };
 
   // Ugly but working
-  document.onkeydown = e => {
+  window.onkeydown = e => {
     if (e.key == "ArrowRight") {
       changePage(props.page % pages.length + 1);
     } else if (e.key == "ArrowLeft") {
