@@ -292,6 +292,21 @@ function TablePage(props: {
   );
 }
 
+// Indexes pages from 0
+function nextPendingPage(pages: PageStatus[], currentPage: number): number {
+  let result = pages.slice(currentPage + 1).findIndex(page => !page.done);
+  if (result != -1) {
+    // found index relative to slice start
+    result += currentPage + 1;
+  } else {
+    result = pages.slice(0, currentPage).findIndex(page => !page.done);
+  }
+  if (result == -1) {
+    result = currentPage;
+  }
+  return result;
+}
+
 export function DatasetPage(props: {
   dataset: Dataset;
   saveTable: (index: number, data: FilledTableData) => void;
@@ -313,10 +328,12 @@ export function DatasetPage(props: {
 
   // Ugly but working
   window.onkeydown = e => {
-    if (e.key == "ArrowRight") {
+    if (e.code == "ArrowRight") {
       changePage(props.page % pages.length + 1);
-    } else if (e.key == "ArrowLeft") {
+    } else if (e.code == "ArrowLeft") {
       changePage((props.page + pages.length - 2) % pages.length + 1);
+    } else if (e.code == "Space") {
+      changePage(nextPendingPage(pages, tableIndex) + 1);
     }
   };
 
