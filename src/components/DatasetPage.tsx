@@ -284,6 +284,11 @@ function TablePage(props: {
     <Box padding={4}>
       <FormGroup>
         <Grid container spacing={2} alignItems={"stretch"} width={1}>
+          <Grid>
+            <Typography variant="h6">
+              {props.table.file_name ?? "<unknown>"}
+            </Typography>
+          </Grid>
           <Grid width="100%">
             <TableViewer
               tableData={props.table}
