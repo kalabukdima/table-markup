@@ -22,7 +22,7 @@
     "browser-fs-access": "^0.34.1",
     "idb": "^7.1.1",
     "jszip": "^3.10.1",
-    "material-ui-color": "../material-ui-color",
+    "material-ui-color": "^1.2.0",
     "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
