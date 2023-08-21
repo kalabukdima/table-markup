@@ -2,7 +2,7 @@
 import React from "react";
 import {
   Paper, Table, TableBody, TableRow, TableCell, TableContainer, ThemeProvider, AppBar, Box, Toolbar, Typography, IconButton,
-  Pagination, FormGroup, PaginationItem, useMediaQuery, useTheme, ToggleButtonGroup, ToggleButton
+  Pagination, FormGroup, PaginationItem, useMediaQuery, useTheme, ToggleButtonGroup, ToggleButton, Modal
 } from "@mui/material";
 import { ColorPicker } from "material-ui-color";
 import Grid from "@mui/material/Unstable_Grid2";
@@ -11,6 +11,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import AppsIcon from "@mui/icons-material/Apps";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AddIcon from '@mui/icons-material/Add';
 import Spacer from "@/components/Spacer";
 import TableColumnsIcon from "@/components/TableColumnsIcon";
@@ -32,6 +33,7 @@ function Header(props: {
   setPage: (x: number) => void;
   download: () => void;
   upload: () => void;
+  showHelp: () => void;
 }) {
   const theme = useTheme();
   const small = useMediaQuery(theme.breakpoints.down("sm"), { defaultMatches: true });
@@ -67,10 +69,64 @@ function Header(props: {
             }} />
           )} />
         <Spacer />
+        <IconButton color="inherit" onClick={props.showHelp} sx={{ mr: 1 }}><HelpOutlineIcon /></IconButton>
         <IconButton color="inherit" onClick={props.download}><FileDownloadIcon /></IconButton>
       </Toolbar>
     </AppBar>
   );
+}
+
+function HelpWindow(props: {
+  isOpen: boolean,
+  close: () => void,
+}) {
+  return <Modal open={props.isOpen} onClose={props.close}>
+    <Paper sx={{
+      margin: "25vh auto 0 auto",
+      maxWidth: "30em",
+      padding: 4,
+    }}>
+      <Grid container columnSpacing={1} rowSpacing={1}>
+        <Grid xs={12}>
+          <Typography variant="h4" marginBottom={2}>
+            Keyboard navigation
+          </Typography>
+        </Grid>
+        <Grid xs={2.5}>
+          <kbd>←</kbd>/<kbd>→</kbd>
+        </Grid>
+        <Grid xs={9.5}>
+          <Typography>
+            Navigate between tables
+          </Typography>
+        </Grid>
+        <Grid xs={2.5}>
+          <kbd>Space</kbd>
+        </Grid>
+        <Grid xs={9.5}>
+          <Typography>
+            Go to the next not marked page
+          </Typography>
+        </Grid>
+        <Grid xs={2.5}>
+          <kbd>Alt</kbd> + click
+        </Grid>
+        <Grid xs={9.5}>
+          <Typography>
+            Start editing text in a table cell
+          </Typography>
+        </Grid>
+        <Grid xs={2.5}>
+          <kbd>?</kbd>
+        </Grid>
+        <Grid xs={9.5}>
+          <Typography>
+            Show this help
+          </Typography>
+        </Grid>
+      </Grid>
+    </Paper>
+  </Modal>;
 }
 
 function TableViewer(props: {
@@ -319,6 +375,7 @@ export function DatasetPage(props: {
 }) {
   const tableIndex = props.page - 1;
   const [currentTable, setCurrentTable] = React.useState(props.dataset.tables[tableIndex].data);
+  const [helpOpen, setHelpOpen] = React.useState(false);
   const pages = props.dataset.tables.map(table => ({ done: isMarkedUp(table.data) }));
 
   const changePage = (newPage: number) => {
@@ -334,6 +391,10 @@ export function DatasetPage(props: {
       changePage((props.page + pages.length - 2) % pages.length + 1);
     } else if (e.code == "Space") {
       changePage(nextPendingPage(pages, tableIndex) + 1);
+    } else if (e.key == "?") {
+      setHelpOpen(!helpOpen);
+    } else if (e.code == "Escape") {
+      setHelpOpen(false);
     }
   };
 
@@ -344,7 +405,9 @@ export function DatasetPage(props: {
         download={() => {
           props.saveAndDownload(tableIndex, currentTable);
         }}
-        upload={props.upload} />
+        upload={props.upload}
+        showHelp={() => setHelpOpen(true)}
+      />
       <TablePage
         table={currentTable}
         colors={props.colors}
@@ -356,6 +419,10 @@ export function DatasetPage(props: {
           // In case there is only one table it should be redrawn correctly
           setCurrentTable(newData);
         }} />
+      <HelpWindow
+        isOpen={helpOpen}
+        close={() => setHelpOpen(false)}
+      />
     </ThemeProvider>
   );
 }
