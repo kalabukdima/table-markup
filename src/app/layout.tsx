@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Table Markup",
   description: "Web app that allows editing tables and annotating them for ML models training",
   colorScheme: "normal",
+  themeColor: "white",
+  manifest: "manifest.json",
 }
 
 export default function RootLayout({
