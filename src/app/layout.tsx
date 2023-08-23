@@ -1,14 +1,16 @@
-import './globals.css'
-import type { Metadata } from 'next'
-import '@fontsource/roboto/300.css';
-import '@fontsource/roboto/400.css';
-import '@fontsource/roboto/500.css';
-import '@fontsource/roboto/700.css';
-import { StrictMode } from 'react';
+import "./globals.css"
+import type { Metadata } from "next"
+import "@fontsource/roboto/300.css";
+import "@fontsource/roboto/400.css";
+import "@fontsource/roboto/500.css";
+import "@fontsource/roboto/700.css";
+import { StrictMode } from "react";
 
 
 export const metadata: Metadata = {
-  title: 'Table Markup',
+  title: "Table Markup",
+  description: "Web app that allows editing tables and annotating them for ML models training",
+  colorScheme: "normal",
 }
 
 export default function RootLayout({

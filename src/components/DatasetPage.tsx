@@ -48,13 +48,15 @@ function Header(props: {
           color="inherit"
           sx={{ mr: 2 }}
           onClick={props.upload}
+          aria-label="Upload dataset"
         >
           <AddIcon />
         </IconButton>
         <Pagination
           page={props.currentPage} count={props.pages.length}
           onChange={(_event, value) => props.setPage(value)}
-          siblingCount={small ? 1 : medium ? 2 : 6} boundaryCount={1} shape="rounded"
+          siblingCount={small ? 0 : medium ? 2 : 6} boundaryCount={small ? 0 : 1} shape="rounded"
+          size="large"
           sx={{
             // For some reason the PaginationItem style below doesn't affect ellipsis
             ".MuiPaginationItem-ellipsis": {
@@ -65,12 +67,12 @@ function Header(props: {
           }}
           renderItem={item => (
             <PaginationItem {...item} sx={{
-              color: item.type === "page" && item.page && (props.pages[item.page - 1]?.done ?? false) ? theme.palette.text.disabled : "inherit"
+              color: item.type === "page" && item.page && (props.pages[item.page - 1]?.done ?? false) ? theme.palette.grey[400] : "inherit"
             }} />
           )} />
         <Spacer />
-        <IconButton color="inherit" onClick={props.showHelp} sx={{ mr: 1 }}><HelpOutlineIcon /></IconButton>
-        <IconButton color="inherit" onClick={props.download}><FileDownloadIcon /></IconButton>
+        <IconButton color="inherit" onClick={props.showHelp} sx={{ mr: 1 }} aria-label="Show help"><HelpOutlineIcon /></IconButton>
+        <IconButton color="inherit" onClick={props.download} aria-label="Download"><FileDownloadIcon /></IconButton>
       </Toolbar>
     </AppBar>
   );
@@ -295,7 +297,8 @@ function TablePage(props: {
               setAnnotations={setAnnotations}
               setCellContent={setCellContent}
               paintType={paintType}
-              colors={props.colors} />
+              colors={props.colors}
+            />
           </Grid>
           <Grid>
             <ToggleButtonGroup
@@ -304,6 +307,7 @@ function TablePage(props: {
               exclusive
               color="primary"
               orientation="vertical"
+              aria-label="Paint type"
             >
               {cellTypes.map(value => <ToggleButton
                 key={value}
@@ -311,6 +315,10 @@ function TablePage(props: {
                 sx={{
                   justifyContent: "left",
                   textTransform: "inherit",
+                  color: "#555",
+                  '&.Mui-selected': {
+                    color: theme => theme.palette.primary.dark,
+                  }
                 }}>
                 <ColorPicker
                   disableAlpha hideTextfield
@@ -332,17 +340,18 @@ function TablePage(props: {
               onChange={(_e, value) => setHeaderType(value)}
               exclusive
               color="primary"
+              aria-label="Header type"
             >
-              <ToggleButton value="horizontal">
+              <ToggleButton value="horizontal" aria-label="horizontal">
                 <TableRowsIcon />
               </ToggleButton>
-              <ToggleButton value="vertical">
+              <ToggleButton value="vertical" aria-label="vertical">
                 <TableColumnsIcon />
               </ToggleButton>
-              <ToggleButton value="matrix">
+              <ToggleButton value="matrix" aria-label="matrix">
                 <AppsIcon />
               </ToggleButton>
-              <ToggleButton value="trash">
+              <ToggleButton value="trash" aria-label="trash">
                 <QuestionMarkIcon />
               </ToggleButton>
             </ToggleButtonGroup>
