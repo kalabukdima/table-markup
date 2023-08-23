@@ -57,6 +57,10 @@ export default function App() {
         setNotFound(true);
       }
     })();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+    };
   }, []);
 
   useEffect(() => {
